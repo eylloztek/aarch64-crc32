@@ -5,7 +5,11 @@ OBJDUMP := $(CROSS)-objdump
 QEMU ?= qemu-aarch64
 
 TARGET := build/aarch64-crc32
-SRC := src/main.S
+
+SOURCES := src/crc32_bitwise.S \
+           tests/test_crc32.S
+
+OBJECTS := $(patsubst %.S,build/%.o,$(SOURCES))
 
 LDFLAGS := -nostdlib -static -no-pie -Wl,-e,_start
 
@@ -13,11 +17,12 @@ LDFLAGS := -nostdlib -static -no-pie -Wl,-e,_start
 
 all: $(TARGET)
 
-$(TARGET): $(SRC) | build
-	$(CC) -g $(LDFLAGS) -o $@ $<
+$(TARGET): $(OBJECTS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS)
 
-build:
-	mkdir -p build
+build/%.o: %.S
+	mkdir -p $(dir $@)
+	$(CC) -g -c -o $@ $<
 
 run: $(TARGET)
 	$(QEMU) $(TARGET)
