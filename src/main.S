@@ -16,7 +16,7 @@
 .type _start, %function
 
 .extern crc32_init
-.extern crc32_update
+.extern crc32_update_table
 .extern crc32_finalize
 
 
@@ -95,7 +95,7 @@ _start:
     mov w0, w20
     mov x1, x21
 
-    bl crc32_update
+    bl crc32_update_table
 
     mov w20, w0
     b .Lread_loop

@@ -97,8 +97,17 @@ def main() -> None:
             3,
             "[ERROR] could not read file\n",
         )
+        
+        check_file_case(
+            args.qemu,
+            binary,
+            root,
+            "all byte values",
+            "all-bytes.bin",
+            bytes(range(256)),
+        )
 
-    print("[PASS] File CRC32 integration tests passed (9/9)")
+    print("[PASS] File CRC32 integration tests passed (10/10)")
 
 
 if __name__ == "__main__":
