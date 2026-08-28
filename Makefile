@@ -5,24 +5,37 @@ OBJDUMP := $(CROSS)-objdump
 QEMU ?= qemu-aarch64
 PYTHON ?= python3
 
+CRC_ARCH_FLAGS := -march=armv8-a+crc
+
 CLI_TARGET := build/aarch64-crc32
+HW_CLI_TARGET := build/aarch64-crc32-hw
+
 TEST_BITWISE_TARGET := build/test_crc32
 TEST_TABLE_TARGET := build/test_crc32_table
+TEST_HW_TARGET := build/test_crc32_hw
 
 COMMON_OBJECT := build/src/crc32_common.o
 BITWISE_OBJECT := build/src/crc32_bitwise.o
 TABLE_OBJECT := build/src/crc32_table.o
-CLI_OBJECT := build/src/main.o
+HW_OBJECT := build/src/crc32_hw.o
+
+MAIN_TABLE_OBJECT := build/src/main_table.o
+MAIN_HW_OBJECT := build/src/main_hw.o
+
 TEST_BITWISE_OBJECT := build/tests/test_crc32.o
 TEST_TABLE_OBJECT := build/tests/test_crc32_table.o
+TEST_HW_OBJECT := build/tests/test_crc32_hw.o
 
 LDFLAGS := -nostdlib -static -no-pie -Wl,-e,_start
 
-.PHONY: all run test disasm disasm-bitwise-tests disasm-table-tests clean
+.PHONY: all run run-hw test disasm disasm-hw disasm-hw-tests clean
 
-all: $(CLI_TARGET) $(TEST_BITWISE_TARGET) $(TEST_TABLE_TARGET)
+all: $(CLI_TARGET) $(HW_CLI_TARGET) $(TEST_BITWISE_TARGET) $(TEST_TABLE_TARGET) $(TEST_HW_TARGET)
 
-$(CLI_TARGET): $(COMMON_OBJECT) $(TABLE_OBJECT) $(CLI_OBJECT)
+$(CLI_TARGET): $(COMMON_OBJECT) $(TABLE_OBJECT) $(MAIN_TABLE_OBJECT)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(HW_CLI_TARGET): $(COMMON_OBJECT) $(HW_OBJECT) $(MAIN_HW_OBJECT)
 	$(CC) $(LDFLAGS) -o $@ $^
 
 $(TEST_BITWISE_TARGET): $(COMMON_OBJECT) $(BITWISE_OBJECT) $(TEST_BITWISE_OBJECT)
@@ -30,6 +43,21 @@ $(TEST_BITWISE_TARGET): $(COMMON_OBJECT) $(BITWISE_OBJECT) $(TEST_BITWISE_OBJECT
 
 $(TEST_TABLE_TARGET): $(COMMON_OBJECT) $(BITWISE_OBJECT) $(TABLE_OBJECT) $(TEST_TABLE_OBJECT)
 	$(CC) $(LDFLAGS) -o $@ $^
+
+$(TEST_HW_TARGET): $(COMMON_OBJECT) $(BITWISE_OBJECT) $(TABLE_OBJECT) $(HW_OBJECT) $(TEST_HW_OBJECT)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(MAIN_TABLE_OBJECT): src/main.S
+	mkdir -p $(dir $@)
+	$(CC) -g -DCRC32_UPDATE_FN=crc32_update_table -c -o $@ $<
+
+$(MAIN_HW_OBJECT): src/main.S
+	mkdir -p $(dir $@)
+	$(CC) -g -DCRC32_UPDATE_FN=crc32_update_hw -c -o $@ $<
+
+$(HW_OBJECT): src/crc32_hw.S
+	mkdir -p $(dir $@)
+	$(CC) -g $(CRC_ARCH_FLAGS) -c -o $@ $<
 
 build/%.o: %.S
 	mkdir -p $(dir $@)
@@ -39,19 +67,25 @@ run: $(CLI_TARGET)
 	@if [ -z "$(FILE)" ]; then echo "Usage: make run FILE=<path>"; exit 2; fi
 	$(QEMU) $(CLI_TARGET) "$(FILE)"
 
-test: $(CLI_TARGET) $(TEST_BITWISE_TARGET) $(TEST_TABLE_TARGET)
+run-hw: $(HW_CLI_TARGET)
+	@if [ -z "$(FILE)" ]; then echo "Usage: make run-hw FILE=<path>"; exit 2; fi
+	$(QEMU) -cpu max $(HW_CLI_TARGET) "$(FILE)"
+
+test: $(CLI_TARGET) $(HW_CLI_TARGET) $(TEST_BITWISE_TARGET) $(TEST_TABLE_TARGET) $(TEST_HW_TARGET)
 	$(QEMU) $(TEST_BITWISE_TARGET)
 	$(QEMU) $(TEST_TABLE_TARGET)
-	$(PYTHON) tests/test_file_crc32.py --binary $(CLI_TARGET) --qemu $(QEMU)
+	$(QEMU) -cpu max $(TEST_HW_TARGET)
+	$(PYTHON) tests/test_file_crc32.py --binary $(CLI_TARGET) --qemu $(QEMU) --label table
+	$(PYTHON) tests/test_file_crc32.py --binary $(HW_CLI_TARGET) --qemu $(QEMU) --cpu max --label hardware
 
 disasm: $(CLI_TARGET)
 	$(OBJDUMP) -d $(CLI_TARGET)
 
-disasm-bitwise-tests: $(TEST_BITWISE_TARGET)
-	$(OBJDUMP) -d $(TEST_BITWISE_TARGET)
+disasm-hw: $(HW_CLI_TARGET)
+	$(OBJDUMP) -d $(HW_CLI_TARGET)
 
-disasm-table-tests: $(TEST_TABLE_TARGET)
-	$(OBJDUMP) -d $(TEST_TABLE_TARGET)
+disasm-hw-tests: $(TEST_HW_TARGET)
+	$(OBJDUMP) -d $(TEST_HW_TARGET)
 
 clean:
 	rm -rf build
