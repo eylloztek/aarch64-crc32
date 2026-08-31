@@ -4,4 +4,9 @@
 *.out
 *.log
 
+__pycache__/
+*.py[cod]
+
+/benchmarks/results/
+
 .vscode/

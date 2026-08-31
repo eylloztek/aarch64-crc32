@@ -36,7 +36,7 @@ BENCH_HW_OBJECT := build/benchmarks/bench_crc32_hw.o
 
 LDFLAGS := -nostdlib -static -no-pie -Wl,-e,_start
 
-.PHONY: all run run-hw test disasm disasm-hw disasm-hw-tests clean benchmark benchmark-check benchmark-native
+.PHONY: all run run-hw test benchmark benchmark-check benchmark-native release-check disasm disasm-hw disasm-hw-tests clean
 
 all: $(CLI_TARGET) $(HW_CLI_TARGET) $(TEST_BITWISE_TARGET) $(TEST_TABLE_TARGET) $(TEST_HW_TARGET) $(BENCH_BITWISE_TARGET) $(BENCH_TABLE_TARGET) $(BENCH_HW_TARGET)
 
@@ -131,6 +131,9 @@ test: $(CLI_TARGET) $(HW_CLI_TARGET) $(TEST_BITWISE_TARGET) $(TEST_TABLE_TARGET)
 	$(QEMU) -cpu max $(TEST_HW_TARGET)
 	$(PYTHON) tests/test_file_crc32.py --binary $(CLI_TARGET) --qemu $(QEMU) --label table
 	$(PYTHON) tests/test_file_crc32.py --binary $(HW_CLI_TARGET) --qemu $(QEMU) --cpu max --label hardware
+
+release-check:
+	./scripts/release_check.sh
 
 disasm: $(CLI_TARGET)
 	$(OBJDUMP) -d $(CLI_TARGET)

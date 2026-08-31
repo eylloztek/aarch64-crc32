@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-release-check:
+    name: Build, Test and Validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install AArch64 toolchain and QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu \
+            binutils-aarch64-linux-gnu \
+            qemu-user \
+            make
+
+      - name: Show tool versions
+        run: |
+          aarch64-linux-gnu-gcc --version | head -n 1
+          aarch64-linux-gnu-objdump --version | head -n 1
+          qemu-aarch64 --version | head -n 1
+          python3 --version
+          make --version | head -n 1
+
+      - name: Run release validation
+        run: make release-check
