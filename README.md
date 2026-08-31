@@ -1,5 +1,7 @@
 # AArch64 CRC32
 
+[![CI](https://github.com/eylloztek/aarch64-crc32/actions/workflows/ci.yml/badge.svg)](https://github.com/eylloztek/aarch64-crc32/actions/workflows/ci.yml)
+
 Pure AArch64 assembly implementations of CRC-32 for Linux, including bitwise, table-driven, and ARMv8 hardware-assisted engines.
 
 The CRC algorithms, streaming API, Linux file-processing CLI, hexadecimal formatter, and benchmark harness are implemented in AArch64 assembly. Python is used only for test orchestration, independent checksum verification, benchmark aggregation, and reporting.
